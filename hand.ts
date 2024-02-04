@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import { v4 as uuidv4 } from 'uuid';
 
 import {
   CardGroup,
@@ -15,11 +16,10 @@ export function shuffle<T>(array: Array<T>) {
   let currentIndex = array.length,
     randomIndex;
 
-  while (currentIndex != 0) {a
+  while (currentIndex != 0) {
     randomIndex = Math.floor(Math.random() * currentIndex);
     currentIndex--;
 
-    // @ts-expect-error This is fine.
     [array[currentIndex], array[randomIndex]] = [
       array[randomIndex],
       array[currentIndex],
@@ -100,7 +100,7 @@ export interface HandInterface {
 }
 
 export class Hand implements HandInterface {
-  #id = Math.random().toString(36).substring(2);
+  #id = uuidv4();
   #gameConfig: GameConfigType;
   #holeCards: Record<PlayerId, [Card, Card]> = {};
   #seats: Seat[];
@@ -165,9 +165,11 @@ export class Hand implements HandInterface {
   }
 
   #getSmallBlindPlayer() {
-    return this.#seats.length > 2
-      ? this.#nextPlayerAfter(this.#seats[0]!.playerId)!
-      : this.#seats[0]!.playerId;
+    return this.#seats.length > 0
+      ? this.#seats.length > 2
+        ? this.#nextPlayerAfter(this.#seats[0]!.playerId)!
+        : this.#seats[0]!.playerId
+      : null;
   }
 
   #getBigBlindPlayer() {
@@ -279,7 +281,7 @@ export class Hand implements HandInterface {
     }
 
     if (this.#stage === "showdown") {
-      throw new Error("wtf");
+      throw new Error("Stage is showdown");
     }
 
     this.#stage = stages[stages.indexOf(this.#stage) + 1]!;
@@ -404,7 +406,12 @@ export class Hand implements HandInterface {
   #makeBet({ playerId, amount }: { playerId: PlayerId; amount: number }) {
     assert(amount >= 0, "Amount must be positive");
 
-    const seat = this.#seats.find((seat) => seat.playerId === playerId)!;
+    const seat = this.#seats.find((seat) => seat.playerId === playerId);
+
+    if (!seat) {
+      throw new Error(`Player with id ${playerId} not found.`);
+    }
+
     assert(seat.stack >= amount, "Not enough money");
 
     // FIXME: better way
@@ -433,7 +440,7 @@ export class Hand implements HandInterface {
   }
 
   #runActiveTimeout() {
-    if (this.#activeTimeout === 0) {
+    if (!this.#activePlayerId || this.#activeTimeout === 0) {
       if (this.isValidBet(this.#activePlayerId!, 0)) {
         this.act(this.#activePlayerId!, { type: "bet", amount: 0 });
       } else {
