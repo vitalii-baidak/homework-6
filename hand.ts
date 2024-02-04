@@ -1,56 +1,35 @@
 import assert from "node:assert";
 import { v4 as uuidv4 } from 'uuid';
-
-import {
-  CardGroup,
-  OddsCalculator,
-  type Card as PokerToolsCard,
-} from "poker-tools";
-
+import { CardGroup, OddsCalculator, type Card as PokerToolsCard } from "poker-tools";
 import { randomUUID } from "node:crypto";
 
 const DELAY_AFTER_DEALING_COMMUNITY_CARDS = 1000;
 const DELAY_AFTER_DEALING_HOLE_CARDS = 1000;
 
-export function shuffle<T>(array: Array<T>) {
+export function shuffle<T>(array: Array<T>): Array<T> {
   let currentIndex = array.length,
     randomIndex;
 
-  while (currentIndex != 0) {
+  while (currentIndex !== 0) {
     randomIndex = Math.floor(Math.random() * currentIndex);
     currentIndex--;
 
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex],
-      array[currentIndex],
-    ];
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
   }
 
   return array;
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<unknown> => new Promise((resolve) => setTimeout(resolve, ms));
 
 type Card = string;
 type PlayerAction =
-  | {
-      type: "fold";
-    }
-  | {
-      type: "bet";
-      amount: number;
-    };
+  | { type: "fold" }
+  | { type: "bet"; amount: number };
 
-const stages = [
-  "start",
-  "preflop",
-  "flop",
-  "turn",
-  "river",
-  "showdown",
-] as const;
+const stages = ["start", "preflop", "flop", "turn", "river", "showdown"] as const;
 
-function generateNewDeck() {
+function generateNewDeck(): string[] {
   const suits = "hdcs";
   const numbers = "A23456789TJQK";
 
@@ -61,7 +40,7 @@ function generateNewDeck() {
   return shuffle(deck);
 }
 
-const areSetsEqual = <T>(a: Set<T>, b: Set<T>) =>
+const areSetsEqual = <T>(a: Set<T>, b: Set<T>): boolean =>
   a.size === b.size && [...a].every((value) => b.has(value));
 
 type PlayerId = string;
@@ -84,7 +63,7 @@ type CurrencyType = number;
 
 const handsSet = new Set<Hand>();
 
-export interface HandInterface {
+interface HandInterface {
   getState(): {
     communityCards: Card[];
     holeCards: Record<PlayerId, [Card, Card]>;
@@ -99,7 +78,7 @@ export interface HandInterface {
   destroy(): void;
 }
 
-export class Hand implements HandInterface {
+class Hand implements HandInterface {
   #id = uuidv4();
   #gameConfig: GameConfigType;
   #holeCards: Record<PlayerId, [Card, Card]> = {};
@@ -638,10 +617,15 @@ export class Hand implements HandInterface {
   }
 
   destroy() {
-    this.#destroyed = true;
-    handsSet.delete(this);
-    if (this.#currentPlayerTimeout) {
-      clearTimeout(this.#currentPlayerTimeout);
+    if (this.#destroyed) {
+      return;
     }
+
+    if (this.#currentPlayerTimeout) clearTimeout(this.#currentPlayerTimeout);
+
+    handsSet.delete(this);
+    this.#destroyed = true;
   }
 }
+
+export { Hand };
